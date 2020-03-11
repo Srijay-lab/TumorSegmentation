@@ -99,7 +99,7 @@ class NeuralNetwork:
             save_weights_only=True,
             period=2)
         csv_logger = CSVLogger(log_file, append=True, separator=';')
-        history = model.fit_generator(self.data_store.ValidData,
+        history = model.fit_generator(self.data_store.TrainData,
                                       validation_data=self.data_store.ValidData,
                                       epochs=self.epochs,
                                       callbacks=[earlystop, reduce_lr, cp_callback,csv_logger])
