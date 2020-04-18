@@ -1,0 +1,319 @@
+
+1. training using class weights
+   id => 20200225_171615 (best resnet50 model till)
+
+2. training without class weights
+   id => 20200226_182330
+
+* New exps -
+
+1. Soft Labeling (if middle point lies in annotated region, mark it as tumor) -> 20200303_221558
+2. Hard Labeling (if even 1% of tumor in patch, mark it as tumor) -> 20200304_132447
+3. Soft Labeling with binary cross entropy loss and rescaling images -> 20200304_221754 (best till now)
+3. Hard Labeling with binary cross entropy loss and rescaling images -> 20200306_154005 (10 epochs early stopping) (tumor recall is very good)
+4. Soft Labeling with binary cross entropy loss and rescaling images, 224 targeted size -> 20200306_011654
+7. Soft Labeling with binary cross entropy loss and rescaling images, 224 targeted size, removing batch norm -> 20200306_130831
+5. Hard Labeling with binary cross entropy loss and rescaling images, 224 targeted size -> 20200306_085734
+6. Hard Labeling with binary cross entropy loss and rescaling images, 224 targeted size, removing batch norm -> 20200306_102145 (Batch norm removal did good job)
+
+
+* After a short break
+
+1. Hard Labeling with binary cross entropy loss, rescaling images, 224 targeted size, weighted training -> 20200309_111020 (tumor recall is very good)
+
+2.
+(i) Hard Labeling with binary cross entropy loss, rescaling images, 512 targeted size, weighted training (other dataset, seed=25 and not 42) -> 20200310_152256 (tumor recall is very good)
+Early stopping stopped after  22
+(ii) with lr = 0.0001 => 20200311_084104
+Early stopping stopped after  23 (patches collected in experiment2)
+
+3. Experiment on hard labels with weak validation => 20200311_231310
+Early stopping stopped after  22 (patches collected in experiment3)
+
+4. Experiment on soft labels with weak validation => 20200312_143849
+Early stopping stopped after 22 : good model (final.ckpt)
+
+5. Experiment on soft labels with weak validation => 20200313_004957 (different settings)
+Early stopping stopped after 44 : 94.3% AUC on test data using final.ckpt (patches collected in experiment4)
+
+6. Experiment on hard patches with 40X_512 protocol - 20200314_185056 (cp-0032.ckpt)
+   (patches collected in experiment5)
+
+-----------------------------------------------------------------------------------------------------
+
+Fresh experiments on 512 patch size and 20X magnification , 38 slides
+
+XCeption -
+1. Hard patches - 20200324_181132
+Early stopping stopped after  45
+
+2.Hard Patches - 20200325_121902
+Early stopping stopped after  24
+
+3. My network, two parallel networks with 3 and 5 conv windows
+# This returns a tensor
+        input_img = Input(shape=(256, 256, 3))
+
+        #Network 1
+        tower_1_1_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+        tower_1_1_conv = Conv2D(64, (5, 5), padding='same', activation='relu')(tower_1_1_conv)
+        tower_1_1_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_1_1_conv)
+        tower_1_2_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+        tower_1_out_conv = tf.keras.layers.add([tower_1_1_conv, tower_1_2_conv])
+        tower_1_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_1_out_conv)
+        tower_1_1_id = Conv2D(64, (5, 5), padding='same', activation='relu')(tower_1_1_id)
+        tower_1_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_1_1_id)
+        tower_1_out = tf.keras.layers.add([tower_1_out_conv, tower_1_1_id])
+
+        # Network 2
+        tower_2_1_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+        tower_2_1_conv = Conv2D(64, (7, 7), padding='same', activation='relu')(tower_2_1_conv)
+        tower_2_1_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_2_1_conv)
+        tower_2_2_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+        tower_2_out_conv = tf.keras.layers.add([tower_2_1_conv, tower_2_2_conv])
+        tower_2_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_2_out_conv)
+        tower_2_1_id = Conv2D(64, (3, 3), padding='same', activation='relu')(tower_2_1_id)
+        tower_2_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_2_1_id)
+        tower_2_out = tf.keras.layers.add([tower_2_out_conv, tower_2_1_id])
+
+        tower_1_out = GlobalMaxPooling2D()(tower_1_out)
+        tower_2_out = GlobalMaxPooling2D()(tower_2_out)
+
+ id => 20200329_084439
+
+ 4. My network
+
+        #Network 1 --------------------------------------------------------------
+        tower_1_conv = Conv2D(64, (5, 5), padding='same', activation='relu')(input_img)
+        tower_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_conv)
+
+        tower_1_1_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_1_conv)
+        tower_1_1_conv = Conv2D(64, (5, 5), padding='same', activation='relu')(tower_1_1_conv)
+        tower_1_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_1_conv)
+        tower_1_1_conv = Conv2D(64, (5, 5), padding='same', activation='relu')(tower_1_1_conv)
+        tower_1_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_1_conv)
+        tower_1_2_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+        tower_1_out_conv = tf.keras.layers.add([tower_1_1_conv, tower_1_2_conv])
+
+        tower_1_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_1_out_conv)
+        tower_1_1_id = Conv2D(64, (5, 5), padding='same', activation='relu')(tower_1_1_id)
+        tower_1_1_id = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_1_id)
+        tower_1_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_1_1_id)
+        tower_1_out = tf.keras.layers.add([tower_1_out_conv, tower_1_1_id])
+        #--------------------------------------------------------------------------------------------
+
+        # Network 2----------------------------------------------------------------------------------
+        tower_2_conv = Conv2D(64, (7, 7), padding='same', activation='relu')(input_img)
+        tower_2_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_2_conv)
+
+        tower_2_1_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_2_conv)
+        tower_2_1_conv = Conv2D(64, (7, 7), padding='same', activation='relu')(tower_2_1_conv)
+        tower_2_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_2_1_conv)
+        tower_2_1_conv = Conv2D(64, (7, 7), padding='same', activation='relu')(tower_2_1_conv)
+        tower_2_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_2_1_conv)
+        tower_2_2_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+        tower_2_out_conv = tf.keras.layers.add([tower_2_1_conv, tower_2_2_conv])
+
+        tower_2_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_2_out_conv)
+        tower_2_1_id = Conv2D(64, (7, 7), padding='same', activation='relu')(tower_2_1_id)
+        tower_2_1_id = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_2_1_id)
+        tower_2_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_2_1_id)
+        tower_2_out = tf.keras.layers.add([tower_2_out_conv, tower_2_1_id])
+
+        tower_1_out = GlobalMaxPooling2D()(tower_1_out)
+        tower_2_out = GlobalMaxPooling2D()(tower_2_out)
+
+        output = tf.keras.layers.concatenate([tower_1_out,tower_2_out],axis=1)
+        out = Dense(50, activation='tanh')(output)
+        out = Dense(2, activation='softmax')(out)
+
+id => 20200329_174351
+
+3. My network
+
+input_img = Input(shape=(256, 256, 3))
+
+        #Network 1 --------------------------------------------------------------
+        tower_1_conv = Conv2D(64, (3, 3), padding='same', activation='relu')(input_img)
+        tower_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_conv)
+
+        tower_1_1_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_1_conv)
+        tower_1_1_conv = Conv2D(64, (3, 3), padding='same', activation='relu')(tower_1_1_conv)
+        tower_1_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_1_conv)
+        tower_1_2_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+        tower_1_out_conv = tf.keras.layers.add([tower_1_1_conv, tower_1_2_conv])
+
+        tower_1_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_1_out_conv)
+        tower_1_1_id = Conv2D(64, (3, 3), padding='same', activation='relu')(tower_1_1_id)
+        tower_1_1_id = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_1_id)
+        tower_1_out = tf.keras.layers.add([tower_1_out_conv, tower_1_1_id])
+        #--------------------------------------------------------------------------------------------
+
+        # Network 2----------------------------------------------------------------------------------
+        tower_2_conv = Conv2D(64, (9, 9), padding='same', activation='relu')(input_img)
+
+        tower_2_1_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_2_conv)
+        tower_2_1_conv = Conv2D(64, (9, 9), padding='same', activation='relu')(tower_2_1_conv)
+        tower_2_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_2_1_conv)
+        tower_2_2_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+        tower_2_out_conv = tf.keras.layers.add([tower_2_1_conv, tower_2_2_conv])
+
+        tower_2_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_2_out_conv)
+        tower_2_1_id = Conv2D(64, (9, 9), padding='same', activation='relu')(tower_2_1_id)
+        tower_2_1_id = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_2_1_id)
+        tower_2_out = tf.keras.layers.add([tower_2_out_conv, tower_2_1_id])
+        # ------------------------------------------------------------------------------------------
+
+        tower_1_out = GlobalMaxPooling2D()(tower_1_out)
+        tower_2_out = GlobalMaxPooling2D()(tower_2_out)
+
+        output = tf.keras.layers.concatenate([tower_1_out,tower_2_out],axis=1)
+        out = Dense(64, activation='tanh')(output)
+        out = Dense(2, activation='softmax')(out)
+
+        # This creates a model that includes
+        # the Input layer and three Dense layers
+        model = Model(inputs=input_img, outputs=out)
+
+20200330_015304 - best
+
+
+4. Resnet 50
+
+id => 20200331_100558
+
+5. My network
+input_img = Input(shape=(256, 256, 3))
+
+        #Network 1 --------------------------------------------------------------
+        tower_1_conv = Conv2D(64, (3, 3), padding='same', activation='relu')(input_img)
+        tower_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_conv)
+
+        tower_1_1_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_1_conv)
+        tower_1_1_conv = Conv2D(64, (3, 3), padding='same', activation='relu')(tower_1_1_conv)
+        tower_1_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_1_conv)
+        tower_1_2_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+        tower_1_out_conv = tf.keras.layers.add([tower_1_1_conv, tower_1_2_conv])
+
+        tower_1_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_1_out_conv)
+        tower_1_1_id = Conv2D(64, (3, 3), padding='same', activation='relu')(tower_1_1_id)
+        tower_1_1_id = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_1_id)
+        tower_1_out = tf.keras.layers.add([tower_1_out_conv, tower_1_1_id])
+        tower_1_out = GlobalMaxPooling2D()(tower_1_out)
+        out = Dense(32, activation='tanh')(tower_1_out)
+        out = Dense(2, activation='softmax')(out)
+
+        # This creates a model that includes
+        # the Input layer and three Dense layers
+        model = Model(inputs=input_img, outputs=out)
+
+id => 20200401_073405
+
+6. My network
+
+input_img = Input(shape=(256, 256, 3))
+
+        # Network 1 --------------------------------------------------------------
+        tower_1_conv = Conv2D(64, (3, 3), padding='same', activation='relu')(input_img)
+        #tower_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_conv)
+
+        #tower_1_1_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_1_conv)
+        tower_1_1_conv = Conv2D(64, (3, 3), padding='same', activation='relu')(tower_1_conv)
+        tower_1_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_1_conv)
+        tower_1_2_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+        tower_1_out_conv = tf.keras.layers.add([tower_1_1_conv, tower_1_2_conv])
+
+        tower_1_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_1_out_conv)
+        tower_1_1_id = Conv2D(64, (3, 3), padding='same', activation='relu')(tower_1_1_id)
+        tower_1_1_id = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_1_id)
+        tower_1_out = tf.keras.layers.add([tower_1_out_conv, tower_1_1_id])
+        # --------------------------------------------------------------------------------------------
+
+        # Network 2----------------------------------------------------------------------------------
+        tower_2_conv = Conv2D(64, (9, 9), padding='same', activation='relu')(input_img)
+
+        #tower_2_1_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_2_conv)
+        tower_2_1_conv = Conv2D(64, (9, 9), padding='same', activation='relu')(tower_2_conv)
+        tower_2_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_2_1_conv)
+        tower_2_2_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+        tower_2_out_conv = tf.keras.layers.add([tower_2_1_conv, tower_2_2_conv])
+
+        tower_2_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_2_out_conv)
+        tower_2_1_id = Conv2D(64, (9, 9), padding='same', activation='relu')(tower_2_1_id)
+        tower_2_1_id = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_2_1_id)
+        tower_2_out = tf.keras.layers.add([tower_2_out_conv, tower_2_1_id])
+        # ------------------------------------------------------------------------------------------
+
+        tower_1_out = GlobalMaxPooling2D()(tower_1_out)
+        tower_2_out = GlobalMaxPooling2D()(tower_2_out)
+
+        output = tf.keras.layers.concatenate([tower_1_out, tower_2_out], axis=1)
+        out = Dense(64, activation='tanh')(output)
+        out = Dense(2, activation='softmax')(out)
+
+20200402_081952
+
+Early stopping stopped after  27
+cp-0007 seem best , 86 F1 score, 88 Tumor F1 score, 90 tumor recall
+
+7. normal resnet
+
+id => 20200405_081757
+
+base_model = ResNet50(weights='imagenet', include_top=False, input_tensor=Input(shape=img_shape))
+        x = base_model.layers[-1].output
+        x = tf.keras.layers.Flatten()(x)
+        #x = GlobalAveragePooling2D()(x)
+        #x = BatchNormalization()(x)
+        #x = Dropout(0.50)(x)
+        x = Dense(2, activation='softmax', name='fc8')(x)
+        model = Model(inputs=base_model.input, outputs=x)
+
+8.
+id => 20200405_155033
+
+# Network 1 --------------------------------------------------------------
+        tower_1_conv = Conv2D(64, (3, 3), padding='same', activation='relu')(input_img)
+        #tower_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_conv)
+
+        #tower_1_1_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_1_conv)
+        tower_1_1_conv = Conv2D(64, (3, 3), padding='same', activation='relu')(tower_1_conv)
+        tower_1_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_1_conv)
+        tower_1_2_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+        tower_1_out_conv = tf.keras.layers.add([tower_1_1_conv, tower_1_2_conv])
+
+        tower_1_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_1_out_conv)
+        tower_1_1_id = Conv2D(64, (3, 3), padding='same', activation='relu')(tower_1_1_id)
+        tower_1_1_id = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_1_1_id)
+        tower_1_out = tf.keras.layers.add([tower_1_out_conv, tower_1_1_id])
+        tower_1_out = Dropout(0.50)(tower_1_out)
+        # --------------------------------------------------------------------------------------------
+
+        # Network 2----------------------------------------------------------------------------------
+        tower_2_conv = Conv2D(64, (9, 9), padding='same', activation='relu')(input_img)
+
+        #tower_2_1_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_2_conv)
+        tower_2_1_conv = Conv2D(64, (9, 9), padding='same', activation='relu')(tower_2_conv)
+        tower_2_1_conv = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_2_1_conv)
+        tower_2_2_conv = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+        tower_2_out_conv = tf.keras.layers.add([tower_2_1_conv, tower_2_2_conv])
+
+        tower_2_1_id = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_2_out_conv)
+        tower_2_1_id = Conv2D(64, (9, 9), padding='same', activation='relu')(tower_2_1_id)
+        tower_2_1_id = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(tower_2_1_id)
+        tower_2_out = tf.keras.layers.add([tower_2_out_conv, tower_2_1_id])
+        tower_2_out = Dropout(0.50)(tower_2_out)
+        # ------------------------------------------------------------------------------------------
+
+        tower_1_out = GlobalMaxPooling2D()(tower_1_out)
+        tower_2_out = GlobalMaxPooling2D()(tower_2_out)
+
+        output = tf.keras.layers.add([tower_1_out, tower_2_out])
+        out = Dense(64, activation='relu')(output)
+        out = Dense(2, activation='softmax')(out)
+
+        # This creates a model that includes
+        # the Input layer and three Dense layers
+        model = Model(inputs=input_img, outputs=out)
+
+early stopping, check model at cp-0018.ckpt
